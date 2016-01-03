@@ -1,113 +1,161 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>Port Knocking</title>
-<script>
-selectedHost = '0.0.0.0';
-function getInfo() {
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange=function() {
-      if (xhttp.readyState == 4 && xhttp.status == 200) {
-        var res = JSON.parse(xhttp.responseText)
-        var html = ''
-        html = html + '<h2>Server Details</h2>\n';
-            html = html + '<p> IPv4: '+JSON.stringify(res.server.ipv4)+'</p>\n';
-            html = html + '<p> IPv6: '+JSON.stringify(res.server.ipv6)+'</p>\n';
-        html = html + '<h2>Keys</h2>\n';
-            html += '<p> Length of key: '+res.keys.key_length+' </p>';
-            html += '<p> Sequence size: '+res.keys.seq_size+' </p>';
-            html += '<p> Auth init port: '+res.keys.auth_port+' </p>\n';
-            html += '<h3>Active Keys</h3>\n';
-            for (var key in res.keys.active_keys) {
-              var ports = res.keys.active_keys[key].port
-              html = html + '<p> ('+key+'): ';
-              for (var i = 0; i < ports.length-1; i++) {
-                html += ports[i]+', ';
-              }
-              html += ports[ports.length-1];
-              html +='</p>\n';
-            }
-        html = html + '<h2>Hosts</h2>\n';
-            html = html + '<h3>Authenticated</h3>\n'
-            for (var host in res.hosts.authenticated_hosts) {
-              html = html + '<p onclick="clicked(\''+host+'\')">'+host+': '+res.hosts.authenticated_hosts[host]+'s</p>\n';
-            }
-            html = html + '<h3>Authenticating</h3>\n';
-            for (var host in res.hosts.authenticating_hosts) {
-              html = html + '<p>'+host+': '+res.hosts.authenticating_hosts[host]+'s</p>\n';
-            }
-            html = html + '<h3>Blocked</h3>\n';
-            for (var host in res.hosts.blocked_hosts) {
-              html = html + '<p>'+host+': '+res.hosts.blocked_hosts[host]+'s</p>\n';
-            }
-        document.getElementById("info").innerHTML = html;
-      }
-  }
-  xhttp.open('GET', 'portknock/info', true);
-  xhttp.send();
-}
-
-function clicked(ip) {
-  console.log('selecting '+ip)
-  selectedHost = ip;
-}
-
-function getKey() {
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange=function() {
-      if (xhttp.readyState == 4 && xhttp.status == 200) {
-        var res = JSON.parse(xhttp.responseText)
-        var html = JSON.stringify(res);
-        
-        document.getElementById("new_key").innerHTML = html;
-      }
-    }
-    xhttp.open('POST', 'portknock/create_key', true);
-    xhttp.send();
-}
-
-function delHost() {
-    if (selectedHost === '0.0.0.0') 
-      return;
-
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange=function() {
-      if (xhttp.readyState == 4 && xhttp.status == 204) {
-          console.log('delete success');
-      }
-      else {
-          console.log('delete nup');
-      }
-    }
-    xhttp.open('DELETE', 'portknock/host/'+selectedHost, true);
-    xhttp.send();
-    
-    selectedHost = '0.0.0.0';
-}
-</script>
-<style>
-p {
-  margin: 0;
-  padding: 0;
-  display: block;
-}
-h3, h2 {
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
-</style>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>NCKU SDN 2015 Port Knocking Project</title>
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.5/handlebars.min.js"></script>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
+            integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
+            crossorigin="anonymous"></script>
 </head>
+
 <body>
-<h1>Port Knocking Control Panel</h1>
-<button onclick='getInfo()'> Get Port Knocking Info </button>
-<button onclick='getKey()'> Create Key </button>
-<button onclick='delHost()'> Delete Host </button>
 
-<div id='new_key' style='height:20px'>
-  
-</div>
+<script id="server-template" type="text/x-handlebars-template">
+    {{#each .}}
+    <div class="panel panel-default">
+        <div class="panel-heading">{{@key}}</div>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Key Sequences</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {{#each keys}}
+            <tr>
+                <th scope="row">{{math @index "+" 1}}</th>
+                <td>{{.}}</td>
+            </tr>
+            {{/each}}
+            </tbody>
+        </table>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Authenticated_hosts hosts</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {{#each authenticated_hosts}}
+            <tr>
+                <th scope="row">{{math @index "+" 1}}</th>
+                <td>{{@key}}</td>
+            </tr>
+            {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/each}}
+</script>
 
-<div id='info'>
+<script id="info-template" type="text/x-handlebars-template">
+    <p>
+        Auth Port: <span class="label label-default">TCP</span> <span class="label label-primary">{{auth_port}}</span>
+    </p>
+    <div class="panel panel-default">
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Authenticating hosts</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+
+            {{#each authenticating_hosts}}
+            <tr>
+                <th scope="row">{{math @index "+" 1}}</th>
+                <td>{{@key}}</td>
+            </tr>
+            {{/each}}
+            </tbody>
+        </table>
+    </div>
+</script>
+
+<script type="text/javascript">
+
+    Handlebars.registerHelper("math", function (lvalue, operator, rvalue, options) {
+        lvalue = parseFloat(lvalue);
+        rvalue = parseFloat(rvalue);
+
+        return {
+            "+": lvalue + rvalue
+        }[operator];
+    });
+
+    var servers_template_source = $("#server-template").html();
+    var info_template_source = $("#info-template").html();
+    var servers_template = Handlebars.compile(servers_template_source);
+    var info_template = Handlebars.compile(info_template_source);
+
+    function getInfo() {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+            if (xhttp.readyState == 4 && xhttp.status == 200) {
+                var res = JSON.parse(xhttp.responseText);
+                var html = servers_template(res['servers']['ipv4']);
+                $("#info_v4").html(html);
+                var html = servers_template(res['servers']['ipv6']);
+                $("#info_v6").html(html);
+                html = info_template(res);
+                $("#info").html(html);
+            }
+        }
+        xhttp.open('GET', 'portknock/info', true);
+        xhttp.send();
+    }
+
+    getInfo();
+</script>
+
+<div class="container">
+    <div class="page-header">
+        <h1>NCKU SDN 2015</h1>
+    </div>
+    <p class="lead">Port Knocking to authenticate access to a server with Ryu Controller.</p>
+    <p>Fork from <a href="https://github.com/serendipiddy/networkAuth">networkAuth</a>. Modify with multiple host and variable key kength support.</p>
+
+
+    <div class="panel panel-primary">
+        <div class="panel-heading">Information</div>
+        <div class="panel-body">
+            <div id='info'></div>
+        </div>
+    </div>
+
+    <div class="panel panel-primary">
+        <div class="panel-heading">Servers</div>
+        <div class="panel-body">
+            <div id='info_v4'></div>
+            <div id='info_v6'></div>
+        </div>
+    </div>
+    <footer class="footer">
+        <p class="text-muted">National Cheng Kung University |
+            Computer Science and Information Engineering - SDN & NFV 2015
+        </p>
+    </footer>
 </div>
 
 </body>
 </html>
+
+
+<!--</body>-->
+<!--</html>-->
